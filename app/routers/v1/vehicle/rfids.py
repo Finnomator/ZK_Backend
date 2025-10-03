@@ -17,6 +17,10 @@ def get_rfid_uids_bin(session: Session):
     bin_rfid_uids = rfid_uids_to_little_endian_bytes(rfid_uids)
     return bin_rfid_uids
 
+@router.get("/")
+def get_rfids(session: database.SessionDep) -> list[int]:
+    rfid_uids: list[int] = session.exec(select(RfidUidDB.rfid_uid)).all()
+    return rfid_uids
 
 # https://github.com/swagger-api/swagger-ui/issues/4791
 
@@ -24,8 +28,3 @@ def get_rfid_uids_bin(session: Session):
 async def get_rfids_md5_checksum(session: database.SessionDep):
     md5_hash = hashlib.md5(get_rfid_uids_bin(session)).digest()
     return Response(content=md5_hash, media_type="application/octet-stream")
-
-
-@router.get("/download")
-def download_rfids(session: database.SessionDep):
-    return Response(status_code=200, content=get_rfid_uids_bin(session), media_type="application/octet-stream")
