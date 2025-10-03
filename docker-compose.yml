@@ -1,0 +1,37 @@
+services:
+  db:
+    image: postgres:18.0
+    restart: always
+    container_name: postgres
+    env_file: .env
+    ports:
+      - "${POSTGRES_PORT}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U $POSTGRES_USER" ]
+      interval: 1s
+      timeout: 5s
+      retries: 10
+
+  fastapi:
+    build: ./app
+    container_name: fastapi
+    restart: always
+    env_file: .env
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - uploaded_data:/app/uploaded_data
+    ports:
+      - "${FASTAPI_PORT}:8000"
+    develop:
+      watch:
+        - path: ./app
+          target: ./app
+          action: sync+restart
+
+volumes:
+  pgdata:
+  uploaded_data:
