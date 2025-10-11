@@ -4,7 +4,6 @@ from enum import Enum
 from sqlalchemy import Column, ForeignKey, BigInteger
 from sqlmodel import SQLModel, Field, Relationship
 
-from app.models.ints import CHIP_ID
 from app.models.vehicle import VehicleDB
 
 
@@ -20,7 +19,8 @@ class _LogEntryBase(SQLModel):
     timestamp: datetime
     level: LoggingLevel
     message: str
-    chip_id: CHIP_ID
+    chip_id: int
+    timestamp_is_valid: bool # in case the Modem failed to sync time with network
 
     def __str__(self):
         return f"[{self.timestamp.isoformat()}][{self.level.value}] {self.message}"
@@ -28,22 +28,21 @@ class _LogEntryBase(SQLModel):
 
 class LogEntryDB(_LogEntryBase, table=True):
     id: int | None = Field(default=None, primary_key=True)
-    chip_id: CHIP_ID = Field(sa_column=Column(BigInteger(), ForeignKey("vehicledb.chip_id")))
+    chip_id: int = Field(sa_column=Column(BigInteger(), ForeignKey("vehicledb.chip_id")))
     vehicle: VehicleDB = Relationship(back_populates="logs")
 
 
-
-def int_to_logging_level(level: int) -> LoggingLevel:
-    match level:
-        case 0:
+def char_to_logging_level(char: str) -> LoggingLevel:
+    match char:
+        case "D":
             return LoggingLevel.debug
-        case 1:
+        case "I":
             return LoggingLevel.info
-        case 2:
+        case "W":
             return LoggingLevel.warning
-        case 3:
+        case "E":
             return LoggingLevel.error
-        case 4:
+        case "C":
             return LoggingLevel.critical
 
     raise ValueError()
