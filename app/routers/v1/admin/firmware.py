@@ -1,7 +1,10 @@
 from fastapi import APIRouter, Request, HTTPException, Response
+from sqlmodel import select
 
 from app.database import SessionDep
-from app.models.firmware import FirmwareDB
+from app.models.firmware import FirmwareDB, FirmwarePublic
+from app.models.firmware_update import FirmwareUpdateDB
+from app.models.vehicle import VehicleDB
 
 router = APIRouter(prefix="/firmware")
 
@@ -14,7 +17,8 @@ async def upload_new_firmware(version_major: int, version_minor: int, version_pa
     if len(request_body) == 0:
         raise HTTPException(400, "Firmware is empty")
 
-    if session.get(FirmwareDB, (version_major, version_minor, version_patch)) is not None:
+    if session.exec(select(FirmwareDB).where(FirmwareDB.major == version_major, FirmwareDB.minor == version_minor,
+                                             FirmwareDB.patch == version_patch)).first() is not None:
         raise HTTPException(400, "Firmware already exists")
 
     db_firmware = FirmwareDB(major=version_major, minor=version_minor, patch=version_patch, file=request_body)
@@ -23,3 +27,28 @@ async def upload_new_firmware(version_major: int, version_minor: int, version_pa
     session.commit()
 
     return Response(status_code=200)
+
+
+@router.post("/issue-new")
+async def issue_new_firmware_to_vehicle(vehicle_imei: str, firmware_id: int, session: SessionDep):
+    # check vehicle exists
+    vehicle = session.get(VehicleDB, vehicle_imei)
+    if not vehicle:
+        raise HTTPException(status_code=404, detail=f"Vehicle {vehicle_imei} not found")
+
+    # check firmware exists
+    firmware = session.get(FirmwareDB, firmware_id)
+    if not firmware:
+        raise HTTPException(status_code=404, detail=f"Firmware {firmware_id} not found")
+
+    fw_update = FirmwareUpdateDB(target_vehicle_imei=vehicle.imei, target_firmware_id=firmware.id)
+    session.add(fw_update)
+    session.commit()
+    session.refresh(fw_update)
+
+    return {"status": "ok", "update_id": fw_update.id}
+
+
+@router.get("/all", response_model=list[FirmwarePublic])
+async def get_all_available_firmwares(session: SessionDep):
+    return session.exec(select(FirmwareDB)).all()
