@@ -18,7 +18,7 @@ from app.models.rfid import GpsTrackingConsentRfidUidDB
 router = APIRouter(prefix="/gps-tracking", tags=["GPS Tracking"])
 
 
-def parse_raw_gps(raw_data: io.BytesIO, chip_id: int) -> list[GpsEntryDB]:
+def parse_raw_gps(raw_data: io.BytesIO, imei: str) -> list[GpsEntryDB]:
     fmt = '<ffffBBfQ'
 
     struct_size = struct.calcsize(fmt)
@@ -37,17 +37,17 @@ def parse_raw_gps(raw_data: io.BytesIO, chip_id: int) -> list[GpsEntryDB]:
 
         db_entries.append(
             GpsEntryDB(latitude=lat, longitude=lon, speed=speed, altitude=alt, vsat=vsat, usat=usat, accuracy=accuracy,
-                       timestamp=dt_utc, chip_id=chip_id))
+                       timestamp=dt_utc, imei=imei))
 
     return db_entries
 
 
-def make_gps_path(prefix: str, mac: int, upload_time: datetime):
-    return make_uploaded_data_path(prefix, mac, upload_time, ".gpslog")
+def make_gps_path(prefix: str, imei: str, upload_time: datetime):
+    return make_uploaded_data_path(prefix, imei, upload_time, ".gpslog")
 
 
-def save_malformed_gps_file(mac: int, content: bytes, upload_time: datetime) -> Path:
-    gps_path = make_gps_path("malformed-gps", mac, upload_time)
+def save_malformed_gps_file(imei: str, content: bytes, upload_time: datetime) -> Path:
+    gps_path = make_gps_path("malformed-gps", imei, upload_time)
     os.makedirs(gps_path.parent, exist_ok=True)
 
     if os.path.exists(gps_path):
@@ -70,10 +70,10 @@ async def upload_gps(request: Request, session: SessionDep,
         raise HTTPException(400, "Body is empty")
 
     try:
-        parsed_gps_entries = parse_raw_gps(io.BytesIO(body), car.chip_id)
+        parsed_gps_entries = parse_raw_gps(io.BytesIO(body), car.imei)
     except:
         print("Failed to parse GPS data")
-        saved_to_path = save_malformed_gps_file(car.chip_id, body, upload_time)
+        saved_to_path = save_malformed_gps_file(car.imei, body, upload_time)
         print(f"Saved to {'/'.join(saved_to_path.parts)}")
         raise HTTPException(400, "Malformed log")
 

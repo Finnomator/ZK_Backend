@@ -17,7 +17,7 @@ connect to it.
 
 #### Required Steps
 
-Create a new row in the `vehicledb` table. Enter the chip id of your vehicle (It will be printed in hexadecimal when you
+Create a new row in the `vehicledb` table. Enter the imei of your vehicle (It will be printed in hexadecimal when you
 launch the firmware). Give it a name and a type (currently only `Car` is available).
 
 Insert your UIDs in the `rfiduiddb` table.

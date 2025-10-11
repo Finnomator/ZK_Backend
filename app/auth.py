@@ -17,8 +17,8 @@ invalid_username_or_pwd_exception = HTTPException(
 )
 
 
-def get_car(chip_id: int, session: Session) -> VehicleDB | None:
-    return session.get(VehicleDB, chip_id)
+def get_car(imei: str, session: Session) -> VehicleDB | None:
+    return session.get(VehicleDB, imei)
 
 
 def get_admin(username: str, session: Session) -> AdminDB | None:
@@ -41,15 +41,7 @@ def ensure_secure_connection(request: Request):
 
 
 def auth_vehicle(session: database.SessionDep, credentials: HTTPBasicCredentials = Depends(security)) -> VehicleDB:
-    try:
-        chip_id_int = int(credentials.username, 16)
-    except ValueError:
-        raise HTTPException(
-            status_code=422,
-            detail="Invalid chip ID format",
-        )
-
-    car = get_car(chip_id_int, session)
+    car = get_car(credentials.username, session)
 
     if car is None:
         raise invalid_username_or_pwd_exception
