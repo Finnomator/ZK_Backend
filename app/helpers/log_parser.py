@@ -75,7 +75,7 @@ def parse_iso(iso_str: str) -> datetime:
     return dt
 
 
-def parse_log(raw_log: str, chip_id: int) -> list[LogEntryDB]:
+def parse_log(raw_log: str, chip_id: int, upload_time: datetime) -> list[LogEntryDB]:
     entries: list[LogEntryDB] = []
 
     for match in LOG_REGEX.finditer(raw_log):
@@ -103,7 +103,7 @@ def parse_log(raw_log: str, chip_id: int) -> list[LogEntryDB]:
                 entry.timestamp_is_valid = 2025 <= dt_utc.year < 2070
 
         entry = LogEntryDB(chip_id=chip_id, timestamp=dt_utc, level=level, message=msg,
-                           timestamp_is_valid=2025 <= dt_utc.year < 2070)
+                           timestamp_is_valid=2025 <= dt_utc.year < 2070, upload_timestamp=upload_time)
         entries.append(entry)
 
     return entries

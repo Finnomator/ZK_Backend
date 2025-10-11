@@ -21,6 +21,7 @@ class _LogEntryBase(SQLModel):
     message: str
     chip_id: int
     timestamp_is_valid: bool # in case the Modem failed to sync time with network
+    upload_timestamp: datetime
 
     def __str__(self):
         return f"[{self.timestamp.isoformat()}][{self.level.value}] {self.message}"
