@@ -29,7 +29,12 @@ def is_newer_firmware_available(fm_version: str, session: SessionDep, car: Vehic
     session.add(car)
     session.commit()
 
-    newer_version = car.pending_update.target_firmware.get_version()
+    pending_update = car.pending_update
+
+    if pending_update is None:
+        return False
+
+    newer_version = pending_update.target_firmware.get_version()
     return parsed_fm_ver != newer_version
 
 
