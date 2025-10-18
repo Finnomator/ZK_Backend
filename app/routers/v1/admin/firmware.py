@@ -48,7 +48,12 @@ async def issue_new_firmware_to_vehicle(vehicle_imei: str, firmware_id: int, ses
         select(FirmwareUpdateDB).where(FirmwareUpdateDB.target_vehicle_imei == vehicle_imei)
     ).first()
 
-    if existing_update:
+    if existing_update is not None:
+
+        if existing_update.target_firmware_id == firmware.id:
+            raise HTTPException(status_code=200,
+                                detail="Update has already been issued at " + existing_update.update_issued_at.isoformat())
+
         # just override the existing record
         existing_update.target_firmware_id = firmware.id
         existing_update.update_issued_at = datetime.now(tz=timezone.utc)
