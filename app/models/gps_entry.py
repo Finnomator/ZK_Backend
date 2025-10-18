@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import Column, SmallInteger, REAL, ForeignKey
+from sqlalchemy import Column, SmallInteger, REAL
 from sqlmodel import SQLModel, Field, Relationship
 
 from app.models.vehicle import VehicleDB
@@ -19,5 +19,5 @@ class _GpsEntryBase(SQLModel):
 
 class GpsEntryDB(_GpsEntryBase, table=True):
     id: int | None = Field(default=None, primary_key=True)
-    imei: str = Field(sa_column=Column(ForeignKey("vehicledb.imei")))
+    imei: str = Field(foreign_key="vehicledb.imei")
     vehicle: VehicleDB = Relationship(back_populates="gps_entries")

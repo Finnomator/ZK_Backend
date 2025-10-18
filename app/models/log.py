@@ -1,7 +1,6 @@
 from datetime import datetime
 from enum import Enum
 
-from sqlalchemy import Column, ForeignKey
 from sqlmodel import SQLModel, Field, Relationship
 
 from app.models.vehicle import VehicleDB
@@ -29,7 +28,7 @@ class _LogEntryBase(SQLModel):
 
 class LogEntryDB(_LogEntryBase, table=True):
     id: int | None = Field(default=None, primary_key=True)
-    imei: str = Field(sa_column=Column(ForeignKey("vehicledb.imei")))
+    imei: str = Field(foreign_key="vehicledb.imei")
     vehicle: VehicleDB = Relationship(back_populates="logs")
 
 

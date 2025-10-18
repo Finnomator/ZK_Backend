@@ -1,3 +1,5 @@
+from datetime import datetime, timezone
+
 from fastapi import APIRouter, Request, HTTPException, Response
 from sqlmodel import select
 
@@ -30,7 +32,7 @@ async def upload_new_firmware(version_major: int, version_minor: int, version_pa
 
 
 @router.post("/issue-new")
-async def issue_new_firmware_to_vehicle(vehicle_imei: str, firmware_id: int, session: SessionDep):
+async def issue_new_firmware_to_vehicle(vehicle_imei: str, firmware_id: int, session: SessionDep) -> FirmwareUpdateDB:
     # check vehicle exists
     vehicle = session.get(VehicleDB, vehicle_imei)
     if not vehicle:
@@ -41,8 +43,25 @@ async def issue_new_firmware_to_vehicle(vehicle_imei: str, firmware_id: int, ses
     if not firmware:
         raise HTTPException(status_code=404, detail=f"Firmware {firmware_id} not found")
 
-    fw_update = FirmwareUpdateDB(target_vehicle_imei=vehicle.imei, target_firmware_id=firmware.id)
-    session.add(fw_update)
+    # check for existing pending update
+    existing_update = session.exec(
+        select(FirmwareUpdateDB).where(FirmwareUpdateDB.target_vehicle_imei == vehicle_imei)
+    ).first()
+
+    if existing_update:
+        # just override the existing record
+        existing_update.target_firmware_id = firmware.id
+        existing_update.update_issued_at = datetime.now(tz=timezone.utc)
+        existing_update.update_last_downloaded = None
+        fw_update = existing_update
+    else:
+        # create a new one if none exists
+        fw_update = FirmwareUpdateDB(
+            target_vehicle_imei=vehicle.imei,
+            target_firmware_id=firmware.id
+        )
+        session.add(fw_update)
+
     session.commit()
     session.refresh(fw_update)
 
