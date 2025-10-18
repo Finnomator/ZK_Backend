@@ -1,17 +1,17 @@
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Request, HTTPException, Response
+from fastapi import APIRouter, Request, HTTPException
 from sqlmodel import select
 
 from app.database import SessionDep
 from app.models.firmware import FirmwareDB, FirmwarePublic
-from app.models.firmware_update import FirmwareUpdateDB
+from app.models.firmware_update import FirmwareUpdateDB, FirmwareUpdatePublic
 from app.models.vehicle import VehicleDB
 
 router = APIRouter(prefix="/firmware")
 
 
-@router.post("/upload-new")
+@router.post("/upload-new", response_model=FirmwarePublic)
 async def upload_new_firmware(version_major: int, version_minor: int, version_patch: int, request: Request,
                               session: SessionDep):
     request_body = await request.body()
@@ -28,11 +28,11 @@ async def upload_new_firmware(version_major: int, version_minor: int, version_pa
     session.add(db_firmware)
     session.commit()
 
-    return Response(status_code=200)
+    return db_firmware
 
 
-@router.post("/issue-new")
-async def issue_new_firmware_to_vehicle(vehicle_imei: str, firmware_id: int, session: SessionDep) -> FirmwareUpdateDB:
+@router.post("/issue-new", response_model=FirmwareUpdatePublic)
+async def issue_new_firmware_to_vehicle(vehicle_imei: str, firmware_id: int, session: SessionDep):
     # check vehicle exists
     vehicle = session.get(VehicleDB, vehicle_imei)
     if not vehicle:
@@ -65,7 +65,7 @@ async def issue_new_firmware_to_vehicle(vehicle_imei: str, firmware_id: int, ses
     session.commit()
     session.refresh(fw_update)
 
-    return {"status": "ok", "update_id": fw_update.id}
+    return fw_update
 
 
 @router.get("/all", response_model=list[FirmwarePublic])
