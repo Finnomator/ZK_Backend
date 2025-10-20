@@ -12,18 +12,16 @@ router = APIRouter(prefix="/firmware")
 
 
 @router.post("/upload-new", response_model=FirmwarePublic)
-async def upload_new_firmware(version_major: int, version_minor: int, version_patch: int, request: Request,
-                              session: SessionDep):
+async def upload_new_firmware(version: str, request: Request, session: SessionDep):
     request_body = await request.body()
 
     if len(request_body) == 0:
         raise HTTPException(400, "Firmware is empty")
 
-    if session.exec(select(FirmwareDB).where(FirmwareDB.major == version_major, FirmwareDB.minor == version_minor,
-                                             FirmwareDB.patch == version_patch)).first() is not None:
+    if session.exec(select(FirmwareDB).where(FirmwareDB.version == version)).first() is not None:
         raise HTTPException(400, "Firmware already exists")
 
-    db_firmware = FirmwareDB(major=version_major, minor=version_minor, patch=version_patch, file=request_body)
+    db_firmware = FirmwareDB(version=version, file=request_body)
 
     session.add(db_firmware)
     session.commit()
@@ -32,16 +30,16 @@ async def upload_new_firmware(version_major: int, version_minor: int, version_pa
 
 
 @router.post("/issue-new", response_model=FirmwareUpdatePublic)
-async def issue_new_firmware_to_vehicle(vehicle_imei: str, firmware_id: int, session: SessionDep):
+async def issue_new_firmware_to_vehicle(vehicle_imei: str, firmware_version: str, session: SessionDep):
     # check vehicle exists
     vehicle = session.get(VehicleDB, vehicle_imei)
     if not vehicle:
         raise HTTPException(status_code=404, detail=f"Vehicle {vehicle_imei} not found")
 
     # check firmware exists
-    firmware = session.get(FirmwareDB, firmware_id)
+    firmware = session.get(FirmwareDB, firmware_version)
     if not firmware:
-        raise HTTPException(status_code=404, detail=f"Firmware {firmware_id} not found")
+        raise HTTPException(status_code=404, detail=f"Firmware {firmware_version} not found")
 
     # check for existing pending update
     existing_update = session.exec(
@@ -50,12 +48,12 @@ async def issue_new_firmware_to_vehicle(vehicle_imei: str, firmware_id: int, ses
 
     if existing_update is not None:
 
-        if existing_update.target_firmware_id == firmware.id:
+        if existing_update.target_firmware_version == firmware.version:
             raise HTTPException(status_code=200,
                                 detail="Update has already been issued at " + existing_update.update_issued_at.isoformat())
 
         # just override the existing record
-        existing_update.target_firmware_id = firmware.id
+        existing_update.target_firmware_version = firmware.version
         existing_update.update_issued_at = datetime.now(tz=timezone.utc)
         existing_update.update_last_downloaded = None
         fw_update = existing_update
@@ -63,7 +61,7 @@ async def issue_new_firmware_to_vehicle(vehicle_imei: str, firmware_id: int, ses
         # create a new one if none exists
         fw_update = FirmwareUpdateDB(
             target_vehicle_imei=vehicle.imei,
-            target_firmware_id=firmware.id
+            target_firmware_version=firmware.version
         )
         session.add(fw_update)
 

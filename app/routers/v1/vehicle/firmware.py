@@ -2,7 +2,6 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter, Response, Depends
 from fastapi import HTTPException
-from packaging.version import Version
 from sqlmodel import select
 
 from app.auth import auth_vehicle
@@ -16,14 +15,7 @@ no_firmware_available_exception = HTTPException(500, "No firmware available")
 
 @router.get("/is-newer-available")
 def is_newer_firmware_available(fm_version: str, session: SessionDep, car: VehicleDB = Depends(auth_vehicle)):
-    try:
-        parsed_fm_ver = Version(fm_version)
-    except ValueError:
-        raise HTTPException(422, "Invalid version format")
-
-    cur_firmware = session.exec(
-        select(FirmwareDB).where(FirmwareDB.major == parsed_fm_ver.major, FirmwareDB.minor == parsed_fm_ver.minor,
-                                 FirmwareDB.patch == parsed_fm_ver.micro)).first()
+    cur_firmware = session.exec(select(FirmwareDB).where(FirmwareDB.version == fm_version)).first()
 
     car.current_firmware = cur_firmware  # if cur_firmware is none its unknown
     session.add(car)
@@ -34,8 +26,8 @@ def is_newer_firmware_available(fm_version: str, session: SessionDep, car: Vehic
     if pending_update is None:
         return False
 
-    newer_version = pending_update.target_firmware.get_version()
-    return parsed_fm_ver != newer_version
+    newer_version = pending_update.target_firmware.version
+    return fm_version != newer_version
 
 
 @router.get("/latest")

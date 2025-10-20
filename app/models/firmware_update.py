@@ -10,7 +10,7 @@ class _FirmwareUpdateBase(SQLModel):
     update_issued_at: datetime = Field(default_factory=datetime.utcnow)
     update_last_downloaded: datetime | None = None
     target_vehicle_imei: str = Field(foreign_key="vehicledb.imei", unique=True)
-    target_firmware_id: int = Field(foreign_key="firmwaredb.id")
+    target_firmware_version: str = Field(foreign_key="firmwaredb.version")
 
 
 class FirmwareUpdateDB(_FirmwareUpdateBase, table=True):
