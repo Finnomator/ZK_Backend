@@ -18,7 +18,7 @@ class _VehicleBase(SQLModel):
     imei: str = Field(primary_key=True)
     name: str
     type: VehicleType
-    license_plate: str = Field(unique=True)
+    license_plate: str | None = None
 
     @field_validator("license_plate")
     def check_license_place(cls, v):
