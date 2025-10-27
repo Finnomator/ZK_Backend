@@ -6,7 +6,7 @@ from app import database
 from app.internal import config
 from app.internal.helper import check_password
 from app.models.admin import AdminDB
-from app.models.vehicle import VehicleDB
+from app.models.vehicle import VehicleDB, VehicleType
 
 security = HTTPBasic()
 
@@ -41,12 +41,28 @@ def ensure_secure_connection(request: Request):
 
 
 def auth_vehicle(session: database.SessionDep, credentials: HTTPBasicCredentials = Depends(security)) -> VehicleDB:
-    car = get_car(credentials.username, session)
-
-    if car is None:
-        raise invalid_username_or_pwd_exception
 
     if credentials.password != config.VEHICLE_PASSWORD:
+        raise invalid_username_or_pwd_exception
+
+    username = credentials.username
+
+    if "_" in username:
+        mac = username[:17].replace("_", ":")
+        imei = username[17:]
+
+        car = get_car(imei, session)
+
+        if car is None:
+            car = VehicleDB(imei=imei, name=f"Newly registered. MAC {mac}", type=VehicleType.Car)
+            session.add(car)
+            session.commit()
+
+        return car
+
+    car = get_car(username, session)
+
+    if car is None:
         raise invalid_username_or_pwd_exception
 
     return car
