@@ -22,6 +22,10 @@ class _VehicleBase(SQLModel):
 
     @field_validator("license_plate")
     def check_license_place(cls, v):
+
+        if v is None:
+            return v
+
         v = v.replace(" ", "").upper()
 
         if not license_plate_re.match(v):
