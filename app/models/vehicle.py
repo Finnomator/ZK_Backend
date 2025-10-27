@@ -12,6 +12,7 @@ license_plate_re = re.compile(r"^[A-ZÄÖÜ]{1,3}-[A-Z]{1,2}\d{1,4}$")  # For ge
 
 class VehicleType(str, Enum):
     Car = "Car"
+    TestSetup = "TestSetup"
 
 
 class _VehicleBase(SQLModel):
