@@ -18,7 +18,6 @@ def is_newer_firmware_available(fm_version: str, session: SessionDep, car: Vehic
     cur_firmware = session.exec(select(FirmwareDB).where(FirmwareDB.version == fm_version)).first()
 
     car.current_firmware = cur_firmware  # if cur_firmware is none its unknown
-    session.add(car)
     session.commit()
 
     pending_update = car.pending_update
@@ -37,7 +36,6 @@ def get_latest_firmware_file(session: SessionDep, car: VehicleDB = Depends(auth_
         raise no_firmware_available_exception
 
     pending_update.update_last_downloaded = datetime.now(tz=timezone.utc)
-    session.add(pending_update)
     session.commit()
 
     return Response(status_code=200, content=pending_update.target_firmware.file, media_type="application/octet-stream")
