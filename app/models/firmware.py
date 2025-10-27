@@ -7,8 +7,8 @@ class _FirmwareBase(SQLModel):
 
 class FirmwareDB(_FirmwareBase, table=True):
     file: bytes
-    vehicles: list["VehicleDB"] = Relationship(back_populates="current_firmware")
-    pending_updates: list["FirmwareUpdateDB"] = Relationship(back_populates="target_firmware")
+    vehicles: list["VehicleDB"] | None = Relationship(back_populates="current_firmware")
+    pending_updates: list["FirmwareUpdateDB"] | None = Relationship(back_populates="target_firmware")
 
 
 class FirmwarePublic(_FirmwareBase):

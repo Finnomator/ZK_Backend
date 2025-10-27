@@ -1,8 +1,7 @@
 from datetime import datetime
+from typing import Optional
 
 from sqlmodel import SQLModel, Field, Relationship
-
-from app.models.firmware import FirmwareDB
 
 
 class _FirmwareUpdateBase(SQLModel):
@@ -14,8 +13,8 @@ class _FirmwareUpdateBase(SQLModel):
 
 
 class FirmwareUpdateDB(_FirmwareUpdateBase, table=True):
-    vehicle: "VehicleDB" = Relationship(back_populates="pending_update")
-    target_firmware: "FirmwareDB" = Relationship(back_populates="pending_updates")
+    vehicle: Optional["VehicleDB"] = Relationship(back_populates="pending_update")
+    target_firmware: Optional["FirmwareDB"] = Relationship(back_populates="pending_updates")
 
 
 class FirmwareUpdatePublic(_FirmwareUpdateBase):

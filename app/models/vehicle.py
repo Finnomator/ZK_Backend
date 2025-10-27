@@ -37,7 +37,7 @@ class _VehicleBase(SQLModel):
 class VehicleDB(_VehicleBase, table=True):
     current_firmware_version: str | None = Field(default=None, foreign_key="firmwaredb.version")
 
-    logs: list["LogEntryDB"] = Relationship(back_populates="vehicle")
-    gps_entries: list["GpsEntryDB"] = Relationship(back_populates="vehicle")
+    logs: list["LogEntryDB"] | None = Relationship(back_populates="vehicle")
+    gps_entries: list["GpsEntryDB"] | None = Relationship(back_populates="vehicle")
     current_firmware: FirmwareDB | None = Relationship(back_populates="vehicles")
     pending_update: FirmwareUpdateDB | None = Relationship(back_populates="vehicle")

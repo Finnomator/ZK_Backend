@@ -29,7 +29,7 @@ class _LogEntryBase(SQLModel):
 class LogEntryDB(_LogEntryBase, table=True):
     id: int | None = Field(default=None, primary_key=True)
     imei: str = Field(foreign_key="vehicledb.imei")
-    vehicle: VehicleDB = Relationship(back_populates="logs")
+    vehicle: VehicleDB | None = Relationship(back_populates="logs")
 
 
 def char_to_logging_level(char: str) -> LoggingLevel:
