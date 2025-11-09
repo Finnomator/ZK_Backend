@@ -23,7 +23,7 @@ async def upload_log(session: database.SessionDep, request: Request, car: Vehicl
         file_parent_dir = UPLOAD_DATA_DIR / "malformed-logs"
         file_path = file_parent_dir / file_name
         os.makedirs(file_parent_dir, exist_ok=True)
-        with open(file_path, "w") as f:
+        with open(file_path, "wb") as f:
             f.write(file)
         print(f"Failed to parse log: {ve}. Saved to {file_path}")
         raise HTTPException(400, "Malformed log")
