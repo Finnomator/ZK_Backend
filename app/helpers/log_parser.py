@@ -78,6 +78,8 @@ def parse_iso(iso_str: str) -> datetime:
 def parse_log(raw_log: str, imei: str, upload_time: datetime) -> list[LogEntryDB]:
     entries: list[LogEntryDB] = []
 
+    raw_log = raw_log.replace("\r\n", "\n").replace("\r", "\n") # for regex multiline
+
     for match in LOG_REGEX.finditer(raw_log):
         raw_timestamp, raw_level, msg = match.groups()
         dt_utc = parse_iso(raw_timestamp)
