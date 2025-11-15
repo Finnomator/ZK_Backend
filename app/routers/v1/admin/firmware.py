@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Request, HTTPException
+from fastapi import APIRouter, Request, HTTPException, Response
 from sqlmodel import select
 
 from app.database import SessionDep
@@ -9,6 +9,20 @@ from app.models.firmware_update import FirmwareUpdateDB, FirmwareUpdatePublic
 from app.models.vehicle import VehicleDB
 
 router = APIRouter(prefix="/firmware")
+
+
+@router.get("/download")
+async def download_fw(version: str, session: SessionDep):
+    fw_db = session.exec(select(FirmwareDB).where(FirmwareDB.version == version)).first()
+
+    if not fw_db:
+        raise HTTPException(status_code=404, detail="Firmware not found")
+
+    return Response(
+        content=fw_db.file,
+        media_type="application/octet-stream",
+        headers={"Content-Disposition": f'attachment; filename="{fw_db.version}.bin"'}
+    )
 
 
 @router.post("/upload-new", response_model=FirmwarePublic)
