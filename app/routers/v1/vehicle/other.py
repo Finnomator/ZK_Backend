@@ -35,3 +35,8 @@ def download_test(file_size: conint(ge=1, le=MAX_TEST_FILE_SIZE)):
         raise HTTPException(400, "Requested file too big")
     return StreamingResponse(random_bytes(file_size), media_type="application/octet-stream",
                              headers={"Content-Length": f"{file_size}"})
+
+@router.post("/up-down-test")
+async def up_and_download_test(request: Request):
+    body = await request.body()
+    return Response(status_code=200, content=body)
