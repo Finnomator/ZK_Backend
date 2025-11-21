@@ -11,7 +11,7 @@ from app.models.vehicle import VehicleDB
 
 router = APIRouter(prefix="/firmware", tags=["Firmware"])
 
-no_firmware_available_exception = HTTPException(500, "No firmware available")
+no_firmware_available_exception = HTTPException(204, "No firmware available")
 
 @router.get("/is-newer-available")
 def is_newer_firmware_available(fm_version: str, session: SessionDep, car: VehicleDB = Depends(auth_vehicle)):
@@ -30,9 +30,18 @@ def is_newer_firmware_available(fm_version: str, session: SessionDep, car: Vehic
 
 
 @router.get("/latest")
-def get_latest_firmware_file(session: SessionDep, car: VehicleDB = Depends(auth_vehicle)):
+def get_latest_firmware_file(session: SessionDep, fm_version: str | None = None, car: VehicleDB = Depends(auth_vehicle)):
+
+    if fm_version is not None:
+        cur_firmware = session.exec(select(FirmwareDB).where(FirmwareDB.version == fm_version)).first()
+        car.current_firmware = cur_firmware  # if cur_firmware is none its unknown
+        session.commit()
+
     pending_update = car.pending_update
     if pending_update is None:
+        raise no_firmware_available_exception
+
+    if fm_version is not None and pending_update.target_firmware.version == fm_version:
         raise no_firmware_available_exception
 
     pending_update.update_last_downloaded = datetime.now(tz=timezone.utc)
