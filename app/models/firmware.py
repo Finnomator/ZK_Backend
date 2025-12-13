@@ -6,7 +6,11 @@ class _FirmwareBase(SQLModel):
     added: datetime = Field(default_factory=datetime.utcnow)
 
 class FirmwareDB(_FirmwareBase, table=True):
-    file: bytes
+
+    firmware: bytes
+    bootloader: bytes | None = None
+    partitions: bytes | None = None
+
     vehicles: list["VehicleDB"] | None = Relationship(back_populates="current_firmware")
     pending_updates: list["FirmwareUpdateDB"] | None = Relationship(back_populates="target_firmware")
 

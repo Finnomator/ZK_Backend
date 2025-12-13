@@ -47,7 +47,7 @@ def get_latest_firmware_file(session: SessionDep, fm_version: str | None = None,
     pending_update.update_last_downloaded = datetime.now(tz=timezone.utc)
     session.commit()
 
-    return Response(status_code=200, content=pending_update.target_firmware.file, media_type="application/octet-stream")
+    return Response(status_code=200, content=pending_update.target_firmware.firmware, media_type="application/octet-stream")
 
 
 @router.get("/latest/size")
@@ -55,4 +55,4 @@ def get_latest_firmware_size(car: VehicleDB = Depends(auth_vehicle)) -> int:
     pending_update = car.pending_update
     if pending_update is None:
         raise no_firmware_available_exception
-    return len(pending_update.target_firmware.file)
+    return len(pending_update.target_firmware.firmware)

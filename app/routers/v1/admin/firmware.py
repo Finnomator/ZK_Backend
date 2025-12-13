@@ -1,6 +1,9 @@
+import zipfile
 from datetime import datetime, timezone
+from io import BytesIO
 
-from fastapi import APIRouter, Request, HTTPException, Response
+from fastapi import APIRouter, HTTPException, UploadFile, File
+from fastapi.responses import StreamingResponse
 from sqlmodel import select
 
 from app.database import SessionDep
@@ -18,24 +21,52 @@ async def download_fw(version: str, session: SessionDep):
     if not fw_db:
         raise HTTPException(status_code=404, detail="Firmware not found")
 
-    return Response(
-        content=fw_db.file,
-        media_type="application/octet-stream",
-        headers={"Content-Disposition": f'attachment; filename="{fw_db.version}.bin"'}
+    buffer = BytesIO()
+
+    files = {
+        "firmware.bin": fw_db.firmware,
+        "partitions.bin": fw_db.partitions,
+        "bootloader.bin": fw_db.bootloader,
+    }
+
+    with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as z:
+        for name, data in files.items():
+            if data is not None:
+                z.writestr(name, data)
+
+    buffer.seek(0)
+
+    return StreamingResponse(
+        buffer,
+        media_type="application/zip",
+        headers={"Content-Disposition": f"attachment; filename={fw_db.version}.zip"},
     )
 
 
 @router.post("/upload-new", response_model=FirmwarePublic)
-async def upload_new_firmware(version: str, request: Request, session: SessionDep):
-    request_body = await request.body()
-
-    if len(request_body) == 0:
-        raise HTTPException(400, "Firmware is empty")
-
-    if session.exec(select(FirmwareDB).where(FirmwareDB.version == version)).first() is not None:
+async def upload_new_firmware(
+    version: str,
+    session: SessionDep,
+    bootloader: UploadFile = File(...),
+    firmware: UploadFile = File(...),
+    partitions: UploadFile = File(...),
+):
+    if session.exec(select(FirmwareDB).where(FirmwareDB.version == version)).first():
         raise HTTPException(400, "Firmware already exists")
 
-    db_firmware = FirmwareDB(version=version, file=request_body)
+    bootloader_bytes = await bootloader.read()
+    firmware_bytes = await firmware.read()
+    partitions_bytes = await partitions.read()
+
+    if not bootloader_bytes or not firmware_bytes or not partitions_bytes:
+        raise HTTPException(400, "One or more files are empty")
+
+    db_firmware = FirmwareDB(
+        version=version,
+        bootloader=bootloader_bytes,
+        firmware=firmware_bytes,
+        partitions=partitions_bytes,
+    )
 
     session.add(db_firmware)
     session.commit()
