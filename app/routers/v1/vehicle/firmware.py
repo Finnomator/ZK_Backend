@@ -1,3 +1,4 @@
+import hashlib
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Response, Depends
@@ -30,10 +31,16 @@ def is_newer_firmware_available(fm_version: str, session: SessionDep, car: Vehic
 
 
 @router.get("/latest")
-def get_latest_firmware_file(session: SessionDep, fm_version: str | None = None, car: VehicleDB = Depends(auth_vehicle)):
+def get_latest_firmware_file(
+    session: SessionDep,
+    fm_version: str | None = None,
+    car: VehicleDB = Depends(auth_vehicle),
+):
 
     if fm_version is not None:
-        cur_firmware = session.exec(select(FirmwareDB).where(FirmwareDB.version == fm_version)).first()
+        cur_firmware = session.exec(
+            select(FirmwareDB).where(FirmwareDB.version == fm_version)
+        ).first()
         car.current_firmware = cur_firmware  # if cur_firmware is none its unknown
         session.commit()
 
@@ -47,7 +54,14 @@ def get_latest_firmware_file(session: SessionDep, fm_version: str | None = None,
     pending_update.update_last_downloaded = datetime.now(tz=timezone.utc)
     session.commit()
 
-    return Response(status_code=200, content=pending_update.target_firmware.firmware, media_type="application/octet-stream")
+    new_firmware: bytes = pending_update.target_firmware.firmware
+
+    return Response(
+        status_code=200,
+        content=new_firmware,
+        media_type="application/octet-stream",
+        headers={"x-MD5": hashlib.md5(new_firmware).hexdigest()},
+    )
 
 
 @router.get("/latest/size")
