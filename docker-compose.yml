@@ -25,7 +25,7 @@ services:
     volumes:
       - uploaded_data:/app/uploaded_data
     ports:
-      - "${FASTAPI_PORT}:8000"
+      - "127.0.0.1:${FASTAPI_PORT}:8000"
     develop:
       watch:
         - path: ./app
