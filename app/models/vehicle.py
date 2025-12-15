@@ -17,9 +17,11 @@ class VehicleType(str, Enum):
 
 class _VehicleBase(SQLModel):
     imei: str = Field(primary_key=True)
-    name: str
+    name: str | None = Field(default=None, unique=True)
     type: VehicleType
     license_plate: str | None = None
+    designation: str | None = None
+    location: str | None = None
 
     @field_validator("license_plate")
     def check_license_place(cls, v):
