@@ -22,6 +22,7 @@ class _VehicleBase(SQLModel):
     license_plate: str | None = None
     designation: str | None = None
     location: str | None = None
+    notes: str | None = None
 
     @field_validator("license_plate")
     def check_license_place(cls, v):
