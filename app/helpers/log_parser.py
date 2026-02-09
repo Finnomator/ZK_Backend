@@ -102,10 +102,10 @@ def parse_log(raw_log: str, imei: str, upload_time: datetime) -> list[LogEntryDB
                 found_millis_start = True
                 delta = calib_millis - entry.timestamp.timestamp() * 1000.0
                 entry.timestamp = dt_utc - timedelta(milliseconds=delta)
-                entry.timestamp_is_valid = 2025 <= dt_utc.year < 2070
+                entry.timestamp_is_valid = 2025 <= dt_utc.year and dt_utc < upload_time
 
-        entry = LogEntryDB(imei=imei, timestamp=dt_utc, level=level, message=msg,
-                           timestamp_is_valid=2025 <= dt_utc.year < 2070, upload_timestamp=upload_time)
+        entry = LogEntryDB(imei=imei, original_timestamp=dt_utc, timestamp=dt_utc, level=level, message=msg,
+                           timestamp_is_valid=2025 <= dt_utc.year and dt_utc < upload_time, upload_timestamp=upload_time)
         entries.append(entry)
 
     return entries

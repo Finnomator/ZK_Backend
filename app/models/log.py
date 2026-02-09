@@ -16,6 +16,7 @@ class LoggingLevel(str, Enum):
 
 class _LogEntryBase(SQLModel):
     timestamp: datetime
+    original_timestamp: datetime | None = None
     level: LoggingLevel
     message: str
     imei: str
