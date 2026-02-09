@@ -1,8 +1,6 @@
 import os
 
-from fastapi import APIRouter, Request, Response, HTTPException
-from fastapi.responses import StreamingResponse
-from pydantic import conint
+from fastapi import APIRouter, Request, Response
 
 router = APIRouter(prefix="/other", tags=["Other"])
 
@@ -18,23 +16,6 @@ def random_bytes(size: int):
         yield os.urandom(to_read)
         remaining -= to_read
 
-
-@router.post("/upload-test")
-async def upload_test(request: Request):
-    uploaded_len = 0
-    async for chunk in request.stream():
-        uploaded_len += len(chunk)
-        if uploaded_len > MAX_TEST_FILE_SIZE:
-            raise HTTPException(413, "Request file too big")
-    return Response(status_code=200)
-
-
-@router.get("/download-test")
-def download_test(file_size: conint(ge=1, le=MAX_TEST_FILE_SIZE)):
-    if file_size > MAX_TEST_FILE_SIZE:
-        raise HTTPException(400, "Requested file too big")
-    return StreamingResponse(random_bytes(file_size), media_type="application/octet-stream",
-                             headers={"Content-Length": f"{file_size}"})
 
 @router.post("/up-down-test")
 async def up_and_download_test(request: Request):
