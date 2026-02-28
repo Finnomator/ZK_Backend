@@ -4,7 +4,7 @@ from enum import Enum
 from sqlmodel import SQLModel, Field, Relationship
 
 from app.models.vehicle import VehicleDB
-
+from app.models.dataclasses.log import ParsedLogEntry
 
 class LoggingLevel(str, Enum):
     debug = "DEBUG"
@@ -31,6 +31,10 @@ class LogEntryDB(_LogEntryBase, table=True):
     id: int | None = Field(default=None, primary_key=True)
     imei: str = Field(foreign_key="vehicledb.imei")
     vehicle: VehicleDB | None = Relationship(back_populates="logs")
+
+    @staticmethod
+    def from_dataclass(dc: ParsedLogEntry, imei: str, upload_time: datetime):
+        return LogEntryDB(**dc.__dict__, imei=imei,upload_timestamp=upload_time, timestamp_is_valid=2025 <= dc.timestamp.year and dc.timestamp < upload_time)
 
 
 def char_to_logging_level(char: str) -> LoggingLevel:

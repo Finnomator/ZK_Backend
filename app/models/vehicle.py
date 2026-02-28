@@ -45,3 +45,4 @@ class VehicleDB(_VehicleBase, table=True):
     gps_entries: list["GpsEntryDB"] | None = Relationship(back_populates="vehicle")
     current_firmware: FirmwareDB | None = Relationship(back_populates="vehicles")
     pending_update: FirmwareUpdateDB | None = Relationship(back_populates="vehicle")
+    badlogs: list["BadLogDB"] | None = Relationship(back_populates="vehicle")

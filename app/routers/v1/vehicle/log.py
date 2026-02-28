@@ -1,4 +1,3 @@
-import os
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, Request, Response, HTTPException
@@ -6,8 +5,9 @@ from fastapi import APIRouter, Depends, Request, Response, HTTPException
 from app import database
 from app.auth import auth_vehicle
 from app.helpers.log_parser import parse_log
-from app.internal.paths import UPLOAD_DATA_DIR
+from app.models.log import LogEntryDB
 from app.models.vehicle import VehicleDB
+from app.models.badlog import BadLogDB
 
 router = APIRouter(prefix="/log", tags=["Logs"])
 
@@ -16,19 +16,18 @@ router = APIRouter(prefix="/log", tags=["Logs"])
 async def upload_log(session: database.SessionDep, request: Request, car: VehicleDB = Depends(auth_vehicle)):
     upload_time = datetime.now(timezone.utc)
     file = await request.body()  # read raw bytes from body
+    raw_log = file.decode()
     try:
-        parsed_entries = parse_log(file.decode(), car.imei, upload_time)
+        parsed_entries = parse_log(raw_log)
     except (ValueError, OSError) as ve:
-        file_name = f"{datetime.now().strftime('%Y%m%d_%H%M%S')}.badlog"
-        file_parent_dir = UPLOAD_DATA_DIR / "malformed-logs"
-        file_path = file_parent_dir / file_name
-        os.makedirs(file_parent_dir, exist_ok=True)
-        with open(file_path, "wb") as f:
-            f.write(file)
-        print(f"Failed to parse log: {ve}. Saved to {file_path}")
+        session.add(BadLogDB(text=raw_log, upload_timestamp=upload_time))
+        session.commit()
+        print(f"Failed to parse log: {ve}. Saved to db")
         raise HTTPException(400, "Malformed log")
 
-    session.add_all(parsed_entries)
+    log_db: list[LogEntryDB] = [LogEntryDB.from_dataclass(pe, car.imei, upload_time) for pe in parsed_entries]
+
+    session.add_all(log_db)
     session.commit()
-    print("Added", len(parsed_entries), "log entries")
+    print("Added", len(log_db), "log entries")
     return Response(status_code=200)

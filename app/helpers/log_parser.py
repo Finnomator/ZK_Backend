@@ -1,7 +1,8 @@
 import re
 from datetime import datetime, timezone, timedelta
 
-from app.models.log import LogEntryDB, char_to_logging_level, LoggingLevel
+from app.models.dataclasses.log import ParsedLogEntry
+from app.models.log import char_to_logging_level, LoggingLevel
 
 LOG_REGEX = re.compile(r"^\[(.+)]\[(.)] (.+)$", re.MULTILINE)
 
@@ -48,7 +49,7 @@ class V1_0_0(TimeCalibrationMessage):
     # example: [2025-10-11T08:57:40.014Z][I] Time (v1.0.0): millis: 11799 ms, Localtime: 25/10/11,10:57:40+08, Unix timestamp: 1760173060, system time: 1760173060013 ms
 
     __MSG_REGEX = re.compile(
-        r"Time \((v\d\.\d\.\d)\): millis: (\d+) ms, Localtime: (.*), Unix timestamp: (\d+), system time: (\d+) ms")
+        r"Time \((v\d\.\d\.\d)\): millis: (\d+) ms, Localtime: (.*), Unix timestamp: -?(\d+), system time: (\d+) ms")
 
     localtime: str
     unix_timestamp: int
@@ -60,7 +61,7 @@ class V1_0_0(TimeCalibrationMessage):
         result = self.__MSG_REGEX.match(msg)
 
         if result is None:
-            raise ValueError()
+            raise ValueError(f'Line was \'{msg}\'')
 
         _, raw_millis, self.localtime, raw_unix_timestamp, raw_system_time = result.groups()
         self._millis = int(raw_millis)
@@ -75,8 +76,8 @@ def parse_iso(iso_str: str) -> datetime:
     return dt
 
 
-def parse_log(raw_log: str, imei: str, upload_time: datetime) -> list[LogEntryDB]:
-    entries: list[LogEntryDB] = []
+def parse_log(raw_log: str) -> list[ParsedLogEntry]:
+    entries: list[ParsedLogEntry] = []
 
     raw_log = raw_log.replace("\r\n", "\n").replace("\r", "\n") # for regex multiline
 
@@ -102,10 +103,8 @@ def parse_log(raw_log: str, imei: str, upload_time: datetime) -> list[LogEntryDB
                 found_millis_start = True
                 delta = calib_millis - entry.timestamp.timestamp() * 1000.0
                 entry.timestamp = dt_utc - timedelta(milliseconds=delta)
-                entry.timestamp_is_valid = 2025 <= dt_utc.year and dt_utc < upload_time
 
-        entry = LogEntryDB(imei=imei, original_timestamp=dt_utc, timestamp=dt_utc, level=level, message=msg,
-                           timestamp_is_valid=2025 <= dt_utc.year and dt_utc < upload_time, upload_timestamp=upload_time)
+        entry = ParsedLogEntry(original_timestamp=dt_utc, timestamp=dt_utc, level=level, message=msg)
         entries.append(entry)
 
     return entries
