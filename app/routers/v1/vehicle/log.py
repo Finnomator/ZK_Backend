@@ -23,7 +23,8 @@ async def upload_log(session: database.SessionDep, request: Request, car: Vehicl
         session.add(BadLogDB(text=raw_log, upload_timestamp=upload_time))
         session.commit()
         print(f"Failed to parse log: {ve}. Saved to db")
-        raise HTTPException(400, "Malformed log")
+        # Return success because we saved the log and the device can delete its log
+        raise HTTPException(200, "Malformed log")
 
     log_db: list[LogEntryDB] = [LogEntryDB.from_dataclass(pe, car.imei, upload_time) for pe in parsed_entries]
 
