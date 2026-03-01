@@ -20,7 +20,7 @@ async def upload_log(session: database.SessionDep, request: Request, car: Vehicl
     try:
         parsed_entries = parse_log(raw_log)
     except (ValueError, OSError) as ve:
-        session.add(BadLogDB(text=raw_log, upload_timestamp=upload_time))
+        session.add(BadLogDB(text=raw_log, upload_timestamp=upload_time, imei=car.imei))
         session.commit()
         print(f"Failed to parse log: {ve}. Saved to db")
         # Return success because we saved the log and the device can delete its log
