@@ -7,9 +7,7 @@ from sqlmodel import SQLModel, Session
 
 from app.internal import config
 from app.internal.config import DATABASE_URL
-from app.models.admin import AdminDB
-from app.models.gps_entry import GpsEntryDB
-from app.models.log import LogEntryDB
+from app.models import AdminDB, GpsEntryDB, LogEntryDB
 
 engine = create_engine(DATABASE_URL)
 

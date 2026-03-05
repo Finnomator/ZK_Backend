@@ -7,9 +7,9 @@ from fastapi.responses import StreamingResponse
 from sqlmodel import select
 
 from app.database import SessionDep
+from app.models.device import DeviceDB
 from app.models.firmware import FirmwareDB, FirmwarePublic
 from app.models.firmware_update import FirmwareUpdateDB, FirmwareUpdatePublic
-from app.models.vehicle import VehicleDB
 
 router = APIRouter(prefix="/firmware")
 
@@ -75,11 +75,12 @@ async def upload_new_firmware(
 
 
 @router.post("/issue-new", response_model=FirmwareUpdatePublic)
-async def issue_new_firmware_to_vehicle(vehicle_imei: str, firmware_version: str, session: SessionDep):
-    # check vehicle exists
-    vehicle = session.get(VehicleDB, vehicle_imei)
-    if not vehicle:
-        raise HTTPException(status_code=404, detail=f"Vehicle {vehicle_imei} not found")
+async def issue_new_firmware_to_device(device_imei: str, firmware_version: str, session: SessionDep):
+    # check device exists
+    device = session.get(DeviceDB, device_imei)
+
+    if not device:
+        raise HTTPException(status_code=404, detail=f"Device {device_imei} not found")
 
     # check firmware exists
     firmware = session.get(FirmwareDB, firmware_version)
@@ -88,7 +89,7 @@ async def issue_new_firmware_to_vehicle(vehicle_imei: str, firmware_version: str
 
     # check for existing pending update
     existing_update = session.exec(
-        select(FirmwareUpdateDB).where(FirmwareUpdateDB.target_vehicle_imei == vehicle_imei)
+        select(FirmwareUpdateDB).where(FirmwareUpdateDB.target_device_imei == device_imei)
     ).first()
 
     if existing_update is not None:
@@ -105,7 +106,7 @@ async def issue_new_firmware_to_vehicle(vehicle_imei: str, firmware_version: str
     else:
         # create a new one if none exists
         fw_update = FirmwareUpdateDB(
-            target_vehicle_imei=vehicle.imei,
+            target_device_imei=device.imei,
             target_firmware_version=firmware.version
         )
         session.add(fw_update)

@@ -3,7 +3,7 @@
 ## Usage
 
 1. Enter your variables in the `.env` file
-    - `VEHICLE_PASSWORD` will be the password that all vehicles use to authenticate with the server. Enter this in the
+    - `DEVICE_PASSWORD` will be the password that all devices use to authenticate with the server. Enter this in the
       firmware code/config.
 2. Run
    ```shell
@@ -17,7 +17,7 @@ connect to it.
 
 #### Required Steps
 
-Create a new row in the `vehicledb` table. Enter the imei of your vehicle (It will be printed in hexadecimal when you
+Create a new row in the `devicedb` table. Enter the imei of your device (It will be printed in hexadecimal when you
 launch the firmware). Give it a name and a type (currently only `Car` is available).
 
 Insert your UIDs in the `rfiduiddb` table.

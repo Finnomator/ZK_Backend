@@ -11,7 +11,7 @@ class FirmwareDB(_FirmwareBase, table=True):
     bootloader: bytes | None = None
     partitions: bytes | None = None
 
-    vehicles: list["VehicleDB"] | None = Relationship(back_populates="current_firmware")
+    devices: list["DeviceDB"] | None = Relationship(back_populates="current_firmware")
     pending_updates: list["FirmwareUpdateDB"] | None = Relationship(back_populates="target_firmware")
 
 

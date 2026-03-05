@@ -2,7 +2,7 @@ from datetime import datetime
 
 from sqlmodel import SQLModel, Relationship, Field
 
-from app.models.vehicle import VehicleDB
+from app.models.device import DeviceDB
 
 
 class _BadLogBase(SQLModel):
@@ -11,5 +11,5 @@ class _BadLogBase(SQLModel):
 
 class BadLogDB(_BadLogBase, table=True):
     id: int | None = Field(default=None, primary_key=True)
-    imei: str = Field(foreign_key="vehicledb.imei")
-    vehicle: VehicleDB | None = Relationship(back_populates="badlogs")
+    imei: str = Field(foreign_key="devicedb.imei")
+    device: DeviceDB | None = Relationship(back_populates="badlogs")

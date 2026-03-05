@@ -2,22 +2,16 @@ import re
 from enum import Enum
 
 from pydantic import field_validator
-from sqlmodel import SQLModel, Field, Relationship
-
-from app.models.firmware import FirmwareDB
-from app.models.firmware_update import FirmwareUpdateDB
+from sqlmodel import SQLModel, Field
 
 license_plate_re = re.compile(r"^[A-ZÄÖÜ]{1,3}-[A-Z]{1,2}\d{1,4}$")  # For germany
 
 
 class VehicleType(str, Enum):
     Car = "Car"
-    TestSetup = "TestSetup"
 
 
 class _VehicleBase(SQLModel):
-    imei: str = Field(primary_key=True)
-    name: str | None = Field(default=None, unique=True)
     type: VehicleType
     license_plate: str | None = None
     designation: str | None = None
@@ -39,10 +33,4 @@ class _VehicleBase(SQLModel):
 
 
 class VehicleDB(_VehicleBase, table=True):
-    current_firmware_version: str | None = Field(default=None, foreign_key="firmwaredb.version")
-
-    logs: list["LogEntryDB"] | None = Relationship(back_populates="vehicle")
-    gps_entries: list["GpsEntryDB"] | None = Relationship(back_populates="vehicle")
-    current_firmware: FirmwareDB | None = Relationship(back_populates="vehicles")
-    pending_update: FirmwareUpdateDB | None = Relationship(back_populates="vehicle")
-    badlogs: list["BadLogDB"] | None = Relationship(back_populates="vehicle")
+    id: int | None = Field(default=None, primary_key=True)

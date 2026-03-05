@@ -5,23 +5,23 @@ from fastapi import APIRouter, Response, Depends
 from fastapi import HTTPException
 from sqlmodel import select
 
-from app.auth import auth_vehicle
+from app.auth import auth_device
 from app.database import SessionDep
+from app.models.device import DeviceDB
 from app.models.firmware import FirmwareDB
-from app.models.vehicle import VehicleDB
 
 router = APIRouter(prefix="/firmware", tags=["Firmware"])
 
 no_firmware_available_exception = HTTPException(204, "No firmware available")
 
 @router.get("/is-newer-available")
-def is_newer_firmware_available(fm_version: str, session: SessionDep, car: VehicleDB = Depends(auth_vehicle)):
+def is_newer_firmware_available(fm_version: str, session: SessionDep, device: DeviceDB = Depends(auth_device)):
     cur_firmware = session.exec(select(FirmwareDB).where(FirmwareDB.version == fm_version)).first()
 
-    car.current_firmware = cur_firmware  # if cur_firmware is none its unknown
+    device.current_firmware = cur_firmware  # if cur_firmware is none its unknown
     session.commit()
 
-    pending_update = car.pending_update
+    pending_update = device.pending_update
 
     if pending_update is None:
         return False
@@ -34,17 +34,17 @@ def is_newer_firmware_available(fm_version: str, session: SessionDep, car: Vehic
 def get_latest_firmware_file(
     session: SessionDep,
     fm_version: str | None = None,
-    car: VehicleDB = Depends(auth_vehicle),
+    device: DeviceDB = Depends(auth_device),
 ):
 
     if fm_version is not None:
         cur_firmware = session.exec(
             select(FirmwareDB).where(FirmwareDB.version == fm_version)
         ).first()
-        car.current_firmware = cur_firmware  # if cur_firmware is none its unknown
+        device.current_firmware = cur_firmware  # if cur_firmware is none its unknown
         session.commit()
 
-    pending_update = car.pending_update
+    pending_update = device.pending_update
     if pending_update is None:
         raise no_firmware_available_exception
 
@@ -65,8 +65,8 @@ def get_latest_firmware_file(
 
 
 @router.get("/latest/size")
-def get_latest_firmware_size(car: VehicleDB = Depends(auth_vehicle)) -> int:
-    pending_update = car.pending_update
+def get_latest_firmware_size(device: DeviceDB = Depends(auth_device)) -> int:
+    pending_update = device.pending_update
     if pending_update is None:
         raise no_firmware_available_exception
     return len(pending_update.target_firmware.firmware)

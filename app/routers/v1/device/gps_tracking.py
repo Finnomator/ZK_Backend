@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from sqlmodel import select
 
 from app import database
-from app.auth import auth_vehicle, VehicleDB
+from app.auth import auth_device, DeviceDB
 from app.database import SessionDep
 from app.internal.helper import rfid_uids_to_little_endian_bytes
 from app.internal.uploaded_data import make_uploaded_data_path
@@ -60,7 +60,7 @@ def save_malformed_gps_file(imei: str, content: bytes, upload_time: datetime) ->
 
 
 @router.post("/log/upload")
-async def upload_gps(request: Request, session: SessionDep, car: VehicleDB = Depends(auth_vehicle)):
+async def upload_gps(request: Request, session: SessionDep, device: DeviceDB = Depends(auth_device)):
     upload_time = datetime.now()
 
     body = await request.body()
@@ -69,10 +69,10 @@ async def upload_gps(request: Request, session: SessionDep, car: VehicleDB = Dep
         raise HTTPException(400, "Body is empty")
 
     try:
-        parsed_gps_entries = parse_raw_gps(io.BytesIO(body), car.imei)
+        parsed_gps_entries = parse_raw_gps(io.BytesIO(body), device.imei)
     except:
         print("Failed to parse GPS data")
-        saved_to_path = save_malformed_gps_file(car.imei, body, upload_time)
+        saved_to_path = save_malformed_gps_file(device.imei, body, upload_time)
         print(f"Saved to {'/'.join(saved_to_path.parts)}")
         raise HTTPException(400, "Malformed log")
 

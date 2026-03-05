@@ -6,7 +6,7 @@ from app import database
 from app.internal import config
 from app.internal.helper import check_password
 from app.models.admin import AdminDB
-from app.models.vehicle import VehicleDB
+from app.models.device import DeviceDB
 
 security = HTTPBasic()
 
@@ -17,8 +17,8 @@ invalid_username_or_pwd_exception = HTTPException(
 )
 
 
-def get_car(imei: str, session: Session) -> VehicleDB | None:
-    return session.get(VehicleDB, imei)
+def get_device(imei: str, session: Session) -> DeviceDB | None:
+    return session.get(DeviceDB, imei)
 
 
 def get_admin(username: str, session: Session) -> AdminDB | None:
@@ -40,16 +40,16 @@ def ensure_secure_connection(request: Request):
         )
 
 
-def auth_vehicle(session: database.SessionDep, credentials: HTTPBasicCredentials = Depends(security)) -> VehicleDB:
-    car = get_car(credentials.username, session)
+def auth_device(session: database.SessionDep, credentials: HTTPBasicCredentials = Depends(security)) -> DeviceDB:
+    device = get_device(credentials.username, session)
 
-    if car is None:
+    if device is None:
         raise invalid_username_or_pwd_exception
 
-    if credentials.password != config.VEHICLE_PASSWORD:
+    if credentials.password != config.DEVICE_PASSWORD:
         raise invalid_username_or_pwd_exception
 
-    return car
+    return device
 
 
 def auth_admin(session: database.SessionDep, credentials: HTTPBasicCredentials = Depends(security)) -> AdminDB:
