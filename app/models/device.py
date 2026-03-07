@@ -7,6 +7,8 @@ from app.models.firmware_update import FirmwareUpdateDB
 class _DeviceBase(SQLModel):
     imei: str = Field(primary_key=True)
     name: str | None = Field(default=None, unique=True)
+    notes: str | None = None
+    hw_revision: str | None = None
 
 class DeviceDB(_DeviceBase, table=True):
     current_firmware_version: str | None = Field(default=None, foreign_key="firmwaredb.version")
