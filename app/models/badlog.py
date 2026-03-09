@@ -8,6 +8,7 @@ from app.models.device import DeviceDB
 class _BadLogBase(SQLModel):
     text: str
     upload_timestamp: datetime
+    was_reintegrated: bool = False
 
 class BadLogDB(_BadLogBase, table=True):
     id: int | None = Field(default=None, primary_key=True)
