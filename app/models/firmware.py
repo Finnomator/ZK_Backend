@@ -1,6 +1,8 @@
 from datetime import datetime
 from sqlmodel import SQLModel, Field, Relationship
 
+from app.models.hw_revision import HardwareRevisionDB
+
 class _FirmwareBase(SQLModel):
     version: str = Field(primary_key=True)
     added: datetime = Field(default_factory=datetime.utcnow)
@@ -13,7 +15,7 @@ class FirmwareDB(_FirmwareBase, table=True):
 
     devices: list["DeviceDB"] | None = Relationship(back_populates="current_firmware")
     pending_updates: list["FirmwareUpdateDB"] | None = Relationship(back_populates="target_firmware")
-    compatible_hardware: list["HardwareRevisionDB"] | None = Relationship(back_populates="firmwares")
+    compatible_hardware: list[HardwareRevisionDB] | None = Relationship(back_populates="firmwares")
 
 class FirmwarePublic(_FirmwareBase):
     ...
