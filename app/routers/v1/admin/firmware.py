@@ -87,6 +87,10 @@ async def issue_new_firmware_to_device(device_imei: str, firmware_version: str, 
     if not firmware:
         raise HTTPException(status_code=404, detail=f"Firmware {firmware_version} not found")
 
+    # check if hardware is compatible
+    if device.hw_revision not in firmware.compatible_hw_revisions:
+        raise HTTPException(status_code=422, detail='Firmware is not compatible with the device')
+
     # check for existing pending update
     existing_update = session.exec(
         select(FirmwareUpdateDB).where(FirmwareUpdateDB.target_device_imei == device_imei)

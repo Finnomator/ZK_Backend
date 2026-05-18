@@ -8,7 +8,7 @@ class _DeviceBase(SQLModel):
     imei: str = Field(primary_key=True)
     name: str | None = Field(default=None, unique=True)
     notes: str | None = None
-    hw_revision: int | None = None
+    hw_revision: int
 
 class DeviceDB(_DeviceBase, table=True):
     current_firmware_version: str | None = Field(default=None, foreign_key="firmwaredb.version")
