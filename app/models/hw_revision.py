@@ -1,7 +1,5 @@
 from sqlmodel import SQLModel, Field, Relationship
 
-from app.models import FirmwareDB
-
 
 class HardwareFirmwareLink(SQLModel, table=True):
     hw_revision_number: int = Field(foreign_key="hardwarerevisiondb.revision_number", primary_key=True)
