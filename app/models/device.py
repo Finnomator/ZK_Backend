@@ -8,7 +8,7 @@ class _DeviceBase(SQLModel):
     imei: str = Field(primary_key=True)
     name: str | None = Field(default=None, unique=True)
     notes: str | None = None
-    hw_revision: int
+    hw_revision_number: int = Field(foreign_key="hardwarerevisiondb.revision_number")
 
 class DeviceDB(_DeviceBase, table=True):
     current_firmware_version: str | None = Field(default=None, foreign_key="firmwaredb.version")
@@ -18,3 +18,4 @@ class DeviceDB(_DeviceBase, table=True):
     current_firmware: FirmwareDB | None = Relationship(back_populates="devices")
     pending_update: FirmwareUpdateDB | None = Relationship(back_populates="device")
     badlogs: list["BadLogDB"] | None = Relationship(back_populates="device")
+    hw_revision: "HardwareRevisionDB | None" = Relationship(back_populates="devices")

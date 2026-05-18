@@ -10,11 +10,10 @@ class FirmwareDB(_FirmwareBase, table=True):
     firmware: bytes
     bootloader: bytes | None = None
     partitions: bytes | None = None
-    compatible_hw_revisions: list[int]
 
     devices: list["DeviceDB"] | None = Relationship(back_populates="current_firmware")
     pending_updates: list["FirmwareUpdateDB"] | None = Relationship(back_populates="target_firmware")
-
+    compatible_hardware: list["HardwareRevisionDB"] | None = Relationship(back_populates="firmwares")
 
 class FirmwarePublic(_FirmwareBase):
     ...
