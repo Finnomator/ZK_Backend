@@ -51,7 +51,7 @@ def get_latest_firmware_file(
     if fm_version is not None and pending_update.target_firmware.version == fm_version:
         raise no_firmware_available_exception
 
-    if any(device.hw_revision_number == hw.revision_number for hw in pending_update.target_firmware.compatible_hardware):
+    if not any(device.hw_revision_number == hw.revision_number for hw in pending_update.target_firmware.compatible_hardware):
         print(f'Device {device.imei} HW rev {device.hw_revision} got a firmware ({pending_update.target_firmware.version}) issued, that is not compatible with its hardware!!!')
         raise no_firmware_available_exception
 
