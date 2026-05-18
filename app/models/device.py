@@ -2,6 +2,7 @@ from sqlmodel import SQLModel, Field, Relationship
 
 from app.models.firmware import FirmwareDB
 from app.models.firmware_update import FirmwareUpdateDB
+from app.models.hw_revision import HardwareRevisionDB
 
 
 class _DeviceBase(SQLModel):
@@ -18,4 +19,4 @@ class DeviceDB(_DeviceBase, table=True):
     current_firmware: FirmwareDB | None = Relationship(back_populates="devices")
     pending_update: FirmwareUpdateDB | None = Relationship(back_populates="device")
     badlogs: list["BadLogDB"] | None = Relationship(back_populates="device")
-    hw_revision: "HardwareRevisionDB | None" = Relationship(back_populates="devices")
+    hw_revision: HardwareRevisionDB | None = Relationship(back_populates="devices")
