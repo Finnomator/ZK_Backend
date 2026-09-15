@@ -1,5 +1,4 @@
 .idea
 secret_data
-app/uploaded_data
 __pycache__
 .venv

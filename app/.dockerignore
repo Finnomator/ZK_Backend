@@ -13,4 +13,3 @@ docs/
 .gitignore
 .venv
 tools.py
-uploaded_data/
