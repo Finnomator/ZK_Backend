@@ -4,12 +4,13 @@ from app.auth import auth_admin
 from app.database import SessionDep
 from app.internal.helper import hash_password
 from app.models.admin import AdminCreate, AdminDB
-from . import firmware
+from . import firmware, badgpslog
 
 router = APIRouter(prefix="/admin", tags=["Admin"],
                    dependencies=[Depends(auth_admin)])
 
 router.include_router(firmware.router)
+router.include_router(badgpslog.router)
 
 
 @router.post("/add-admin")
