@@ -13,9 +13,11 @@ async def startup_event():
     create_db_and_tables()
     insert_default_admin()
     tasks.start_background_user_data_cleanup_task()
+    tasks.start_vehicle_location_gathering()
 
 @app.on_event("shutdown")
 async def shutdown_event():
     tasks.stop_background_user_data_cleanup_task()
+    tasks.stop_vehicle_location_gathering()
 
 app.include_router(v1.router)
