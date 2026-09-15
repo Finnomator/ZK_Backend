@@ -1,19 +1,19 @@
 import io
-import os
 import struct
 from datetime import datetime, timezone
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
-from sqlmodel import select
+from sqlmodel import select, Session
 
 from app import database
 from app.auth import auth_device, DeviceDB
 from app.database import SessionDep
 from app.internal.helper import rfid_uids_to_little_endian_bytes
-from app.internal.uploaded_data import make_uploaded_data_path
+from app.models.badgpslog import BadGpsLogDB
 from app.models.gps_entry import GpsEntryDB
 from app.models.rfid import GpsTrackingConsentRfidUidDB
+from app.models.badgpslog import BadGpsLogDB
 
 router = APIRouter(prefix="/gps-tracking", tags=["GPS Tracking"])
 
@@ -42,23 +42,6 @@ def parse_raw_gps(raw_data: io.BytesIO, imei: str) -> list[GpsEntryDB]:
     return db_entries
 
 
-def make_gps_path(prefix: str, imei: str, upload_time: datetime):
-    return make_uploaded_data_path(prefix, imei, upload_time, ".gpslog")
-
-
-def save_malformed_gps_file(imei: str, content: bytes, upload_time: datetime) -> Path:
-    gps_path = make_gps_path("malformed-gps", imei, upload_time)
-    os.makedirs(gps_path.parent, exist_ok=True)
-
-    if os.path.exists(gps_path):
-        raise HTTPException(500, "File already exists")
-
-    with open(gps_path, "wb") as f:
-        f.write(content)
-
-    return gps_path
-
-
 @router.post("/log/upload")
 async def upload_gps(request: Request, session: SessionDep, device: DeviceDB = Depends(auth_device)):
     upload_time = datetime.now()
@@ -70,11 +53,11 @@ async def upload_gps(request: Request, session: SessionDep, device: DeviceDB = D
 
     try:
         parsed_gps_entries = parse_raw_gps(io.BytesIO(body), device.imei)
-    except:
-        print("Failed to parse GPS data")
-        saved_to_path = save_malformed_gps_file(device.imei, body, upload_time)
-        print(f"Saved to {'/'.join(saved_to_path.parts)}")
-        raise HTTPException(400, "Malformed log")
+    except Exception as e:
+        session.add(BadGpsLogDB(raw_data=body, imei=device.imei, upload_timestamp=upload_time))
+        session.commit()
+        print(f'Failed to prase GPS log: {e}. Saved to db')
+        raise HTTPException(200, "Malformed log") # Prevent device from uploading logs unnecessarily
 
     session.add_all(parsed_gps_entries)
     session.commit()

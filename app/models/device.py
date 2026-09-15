@@ -19,4 +19,5 @@ class DeviceDB(_DeviceBase, table=True):
     current_firmware: FirmwareDB | None = Relationship(back_populates="devices")
     pending_update: FirmwareUpdateDB | None = Relationship(back_populates="device")
     badlogs: list["BadLogDB"] | None = Relationship(back_populates="device")
+    badgpslogs: list["BadGpsLogDB"] | None = Relationship(back_populates="device")
     hw_revision: HardwareRevisionDB | None = Relationship(back_populates="devices")
