@@ -1,4 +1,5 @@
 import io
+import logging
 import struct
 from datetime import datetime, timezone
 
@@ -12,6 +13,8 @@ from app.internal.helper import rfid_uids_to_little_endian_bytes
 from app.models.badgpslog import BadGpsLogDB
 from app.models.gps_entry import GpsEntryDB
 from app.models.rfid import GpsTrackingConsentRfidUidDB
+
+log = logging.getLogger("app.gps")
 
 router = APIRouter(prefix="/gps-tracking", tags=["GPS Tracking"])
 
@@ -47,18 +50,48 @@ async def upload_gps(request: Request, session: SessionDep, device: DeviceDB = D
     body = await request.body()
 
     if not body:
+        log.warning("Device %s uploaded an empty GPS log", device.imei,
+                    extra={"imei": device.imei})
         raise HTTPException(400, "Body is empty")
+
+    if len(body) % struct.calcsize('<ffffBBfQ'):
+        # Not fatal on its own, but it means the body is not a whole number of
+        # records, which is the signature of a damaged upload.
+        log.warning("GPS log from %s is %d B, not a multiple of the %d B record size",
+                    device.imei, len(body), struct.calcsize('<ffffBBfQ'),
+                    extra={"imei": device.imei, "bytes": len(body)})
 
     try:
         parsed_gps_entries = parse_raw_gps(io.BytesIO(body), device.imei)
     except Exception as e:
-        session.add(BadGpsLogDB(raw_data=body, imei=device.imei, upload_timestamp=upload_time))
+        bad = BadGpsLogDB(raw_data=body, imei=device.imei, upload_timestamp=upload_time)
+        session.add(bad)
         session.commit()
-        print(f'Failed to prase GPS log: {e}. Saved to db')
+        # The device is told 200 so it stops retrying, so this line is the only
+        # signal that a device just lost a log. See repair_bad_gps_logs.py.
+        log.error("Could not parse the %d B GPS log from %s (%s). Stored as badgpslogdb #%s",
+                  len(body), device.imei, e, bad.id,
+                  extra={"imei": device.imei, "bytes": len(body),
+                         "badgpslog_id": bad.id, "error": str(e)})
         raise HTTPException(200, "Malformed log") # Prevent device from uploading logs unnecessarily
+
+    # Read before committing: commit expires every instance, so touching them
+    # afterwards would issue a SELECT per row.
+    span = ((parsed_gps_entries[0].timestamp, parsed_gps_entries[-1].timestamp)
+            if parsed_gps_entries else None)
 
     session.add_all(parsed_gps_entries)
     session.commit()
+
+    if span:
+        log.info("Stored %d GPS entries from %s (%d B, %s to %s)",
+                 len(parsed_gps_entries), device.imei, len(body),
+                 span[0].isoformat(), span[1].isoformat(),
+                 extra={"imei": device.imei, "entries": len(parsed_gps_entries),
+                        "bytes": len(body)})
+    else:
+        log.info("GPS upload from %s contained no entries", device.imei,
+                 extra={"imei": device.imei, "bytes": len(body)})
 
     return {
         "Added": len(parsed_gps_entries)

@@ -1,3 +1,4 @@
+import logging
 import zipfile
 from datetime import datetime, timezone
 from io import BytesIO
@@ -11,6 +12,8 @@ from app.models.device import DeviceDB
 from app.models.firmware import FirmwareDB, FirmwarePublic
 from app.models.firmware_update import FirmwareUpdateDB, FirmwareUpdatePublic
 
+log = logging.getLogger("app.admin.firmware")
+
 router = APIRouter(prefix="/firmware")
 
 
@@ -19,7 +22,11 @@ async def download_fw(version: str, session: SessionDep):
     fw_db = session.exec(select(FirmwareDB).where(FirmwareDB.version == version)).first()
 
     if not fw_db:
+        log.warning("Download requested for unknown firmware %s", version,
+                    extra={"firmware": version})
         raise HTTPException(status_code=404, detail="Firmware not found")
+
+    log.info("Admin downloaded firmware bundle %s", version, extra={"firmware": version})
 
     buffer = BytesIO()
 
@@ -58,6 +65,8 @@ async def upload_new_firmware(
     ).first()
 
     if existing and not overwrite_existing:
+        log.warning("Refused to overwrite existing firmware %s", version,
+                    extra={"firmware": version})
         raise HTTPException(400, "Firmware already exists")
 
     bootloader_bytes = await bootloader.read()
@@ -65,9 +74,22 @@ async def upload_new_firmware(
     partitions_bytes = await partitions.read()
 
     if not skip_version_check and version.encode() not in firmware_bytes:
+        # The mismatch that made devices re-download the same image forever:
+        # the binary reports one version, the row claims another.
+        log.error("Rejected upload of %s: the binary does not contain that version string",
+                  version, extra={"firmware": version, "bytes": len(firmware_bytes)})
         raise HTTPException(400, "Firmware does not specify the given version string")
 
+    if skip_version_check:
+        log.warning("Uploading %s with the version check skipped; if the binary reports a "
+                    "different version, devices will re-download it on every boot",
+                    version, extra={"firmware": version})
+
     if not bootloader_bytes or not firmware_bytes or not partitions_bytes:
+        log.warning("Rejected upload of %s: one or more files were empty "
+                    "(bootloader %d B, firmware %d B, partitions %d B)",
+                    version, len(bootloader_bytes), len(firmware_bytes), len(partitions_bytes),
+                    extra={"firmware": version})
         raise HTTPException(400, "One or more files are empty")
 
     if existing:
@@ -87,6 +109,11 @@ async def upload_new_firmware(
     session.commit()
     session.refresh(db_firmware)
 
+    log.info("Stored firmware %s (%d B, %s)", version, len(firmware_bytes),
+             "replaced existing" if existing else "new",
+             extra={"firmware": version, "bytes": len(firmware_bytes),
+                    "overwrote": bool(existing)})
+
     return db_firmware
 
 
@@ -96,15 +123,23 @@ async def issue_new_firmware_to_device(device_imei: str, firmware_version: str, 
     device = session.get(DeviceDB, device_imei)
 
     if not device:
+        log.warning("Cannot issue %s: device %s not found", firmware_version, device_imei,
+                    extra={"imei": device_imei, "firmware": firmware_version})
         raise HTTPException(status_code=404, detail=f"Device {device_imei} not found")
 
     # check firmware exists
     firmware = session.get(FirmwareDB, firmware_version)
     if not firmware:
+        log.warning("Cannot issue to %s: firmware %s not found", device_imei, firmware_version,
+                    extra={"imei": device_imei, "firmware": firmware_version})
         raise HTTPException(status_code=404, detail=f"Firmware {firmware_version} not found")
 
     # check if hardware is compatible
     if not any(device.hw_revision_number == hw.revision_number for hw in firmware.compatible_hardware):
+        log.warning("Refused to issue %s to %s: incompatible with hw rev %s",
+                    firmware_version, device_imei, device.hw_revision_number,
+                    extra={"imei": device_imei, "firmware": firmware_version,
+                           "hw_revision": device.hw_revision_number})
         raise HTTPException(status_code=422, detail='Firmware is not compatible with the device')
 
     # check for existing pending update
@@ -133,6 +168,10 @@ async def issue_new_firmware_to_device(device_imei: str, firmware_version: str, 
 
     session.commit()
     session.refresh(fw_update)
+
+    log.info("Issued firmware %s to device %s", firmware_version, device_imei,
+             extra={"imei": device_imei, "firmware": firmware_version,
+                    "replaced_pending": existing_update is not None})
 
     return fw_update
 

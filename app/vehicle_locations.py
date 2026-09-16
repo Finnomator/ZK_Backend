@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime
 
 from pykml import parser
@@ -6,11 +7,19 @@ from app.database import engine
 from sqlmodel import Session, select
 from app.models import VehicleDB, VehicleLocation
 
+log = logging.getLogger("app.locations")
+
 KML_URL = "https://www.google.com/maps/d/kml?forcekml=1&mid=1k1WUVpi6m-_RwS6K9mcTyYQ1pMTqYg0"
 
 
 def fetch_latest_kml():
-    tree = parser.parse(urlopen(KML_URL))
+    # A third party we do not control, on a schedule nobody watches.
+    try:
+        tree = parser.parse(urlopen(KML_URL))
+    except Exception:
+        log.error("Could not fetch the vehicle location KML", exc_info=True,
+                  extra={"url": KML_URL})
+        raise
     return tree.getroot()
 
 
@@ -70,6 +79,17 @@ def fetch_locations_and_place_in_db(dry_run: bool = False):
     data = extract_placemarks(root)
 
     vehicle_names_and_ids = match_vehicle_names_to_ids([d["name"] for d in data])
+
+    log.info("Fetched %d placemark(s), matched %d to known vehicles",
+             len(data), len(vehicle_names_and_ids),
+             extra={"placemarks": len(data), "matched": len(vehicle_names_and_ids)})
+
+    unmatched = [d["name"] for d in data if d["name"] not in vehicle_names_and_ids]
+    if unmatched:
+        # Usually a renamed pin on the map; the location is silently dropped.
+        log.warning("%d placemark(s) matched no vehicle: %s", len(unmatched),
+                    ", ".join(sorted(unmatched)[:10]),
+                    extra={"unmatched": unmatched})
 
     with Session(engine) as session:
 

@@ -1,4 +1,5 @@
 import hashlib
+import logging
 import re
 from datetime import datetime, timezone
 
@@ -11,6 +12,8 @@ from app.auth import auth_device
 from app.database import SessionDep
 from app.models.device import DeviceDB
 from app.models.firmware import FirmwareDB
+
+log = logging.getLogger("app.firmware")
 
 router = APIRouter(prefix="/firmware", tags=["Firmware"])
 
@@ -29,7 +32,15 @@ def is_newer_firmware_available(fm_version: str, session: SessionDep, device: De
         return False
 
     newer_version = pending_update.target_firmware.version
-    return fm_version != newer_version
+    available = fm_version != newer_version
+
+    # A device asking repeatedly while already on the target is how the
+    # download loop looked; worth seeing without turning on debug.
+    log.debug("Device %s on %s: update to %s %s", device.imei, fm_version, newer_version,
+              "available" if available else "already applied",
+              extra={"imei": device.imei, "current": fm_version,
+                     "target": newer_version, "available": available})
+    return available
 
 
 # "bytes=0-32767" or open-ended "bytes=32768-". Multi-range is deliberately
@@ -85,6 +96,8 @@ def get_latest_firmware_file(
     else:
         match = _RANGE_RE.match(range_header.strip())
         if match is None:
+            log.warning("Device %s sent an unsupported Range %r", device.imei, range_header,
+                        extra={"imei": device.imei, "range": range_header})
             raise HTTPException(416, f"Unsupported Range: {range_header}")
         rng = (int(match.group(1)), int(match.group(2)) if match.group(2) else None)
 
@@ -107,7 +120,12 @@ def get_latest_firmware_file(
         raise no_firmware_available_exception
 
     if not any(device.hw_revision_number == hw.revision_number for hw in pending_update.target_firmware.compatible_hardware):
-        print(f'Device {device.imei} HW rev {device.hw_revision} got a firmware ({pending_update.target_firmware.version}) issued, that is not compatible with its hardware!!!')
+        # An operator mistake that silently leaves the device un-updatable
+        # forever, because the device is told there is nothing for it.
+        log.error("Device %s (hw rev %s) has firmware %s issued, which is not compatible with its hardware",
+                  device.imei, device.hw_revision, pending_update.target_firmware.version,
+                  extra={"imei": device.imei, "hw_revision": str(device.hw_revision),
+                         "firmware": pending_update.target_firmware.version})
         raise no_firmware_available_exception
 
     if is_first:
@@ -122,6 +140,12 @@ def get_latest_firmware_file(
     headers = {"x-MD5": full_md5, "Accept-Ranges": "bytes"}
 
     if rng is None:
+        # Firmware predating the chunked downloader. One connection has to
+        # survive the whole image, which is what the range support exists to avoid.
+        log.info("Serving the whole %d B image of %s to %s (no Range requested)",
+                 total, version, device.imei,
+                 extra={"imei": device.imei, "firmware": version, "bytes": total,
+                        "ranged": False})
         return Response(
             status_code=200,
             content=_firmware_slice(session, version, 0, total),
@@ -131,11 +155,19 @@ def get_latest_firmware_file(
 
     start, end = rng
     if start >= total:
+        log.warning("Device %s asked for byte %d of a %d B image of %s",
+                    device.imei, start, total, version,
+                    extra={"imei": device.imei, "firmware": version,
+                           "start": start, "total": total})
         raise HTTPException(416, "Range starts past the end of the firmware",
                             headers={"Content-Range": f"bytes */{total}"})
 
     end = total - 1 if end is None else min(end, total - 1)
     if end < start:
+        log.warning("Device %s asked for the empty range %d-%d of %s",
+                    device.imei, start, end, version,
+                    extra={"imei": device.imei, "firmware": version,
+                           "start": start, "end": end})
         raise HTTPException(416, f"Range {start}-{end} is empty",
                             headers={"Content-Range": f"bytes */{total}"})
 
@@ -145,6 +177,14 @@ def get_latest_firmware_file(
     # Lets the device check each chunk on arrival and re-fetch just that range,
     # instead of only finding out at the end that the whole image is bad.
     headers["x-Chunk-MD5"] = hashlib.md5(chunk).hexdigest()
+
+    # The opening and closing chunks bracket a download in the log; the ones in
+    # between are only interesting when chasing a specific device.
+    boundary = start == 0 or end == total - 1
+    log.log(logging.INFO if boundary else logging.DEBUG,
+            "Served %s bytes %d-%d/%d to %s", version, start, end, total, device.imei,
+            extra={"imei": device.imei, "firmware": version, "start": start,
+                   "end": end, "total": total, "ranged": True})
 
     return Response(
         status_code=206,

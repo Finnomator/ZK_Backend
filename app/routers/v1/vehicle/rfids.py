@@ -1,5 +1,6 @@
 import hashlib
 import base64
+import logging
 from typing import Annotated
 
 from fastapi import APIRouter, Response, Header
@@ -9,6 +10,8 @@ from starlette.status import HTTP_304_NOT_MODIFIED
 from app import database
 from app.internal.helper import rfid_uids_to_little_endian_bytes
 from app.models.rfid import RfidUidDB
+
+log = logging.getLogger("app.rfids")
 
 router = APIRouter(prefix="/rfids", tags=["RFIDs"])
 
@@ -36,9 +39,14 @@ def get_rfids(
         md5_b64 = base64.b64encode(md5_raw).decode()
 
         if if_none_match == md5_b64:
+            log.debug("RFID list unchanged", extra={"checksum": md5_b64})
             return Response(status_code=HTTP_304_NOT_MODIFIED)
 
     rfid_uids: list[int] = session.exec(select(RfidUidDB.rfid_uid)).all()
+    # Sending the list means a device is about to replace the UIDs it grants
+    # access with, so it is worth a line even though it is not an error.
+    log.info("Serving %d RFID UIDs (device list was stale or unknown)", len(rfid_uids),
+             extra={"uids": len(rfid_uids), "had_checksum": if_none_match is not None})
     return rfid_uids
 
 

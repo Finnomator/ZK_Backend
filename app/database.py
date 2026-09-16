@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime, timezone, timedelta
 from typing import Annotated
 
@@ -9,6 +10,8 @@ from app.internal import config
 from app.internal.config import DATABASE_URL
 from app.models import AdminDB, GpsEntryDB, LogEntryDB
 
+log = logging.getLogger("app.db")
+
 engine = create_engine(DATABASE_URL)
 
 
@@ -19,6 +22,7 @@ def get_session():
 
 def create_db_and_tables():
     SQLModel.metadata.create_all(engine)
+    log.info("Database schema is up to date")
 
 
 def insert_default_admin():
@@ -28,6 +32,10 @@ def insert_default_admin():
         admin = AdminDB(username=config.DEFAULT_ADMIN_NAME, password_hash=config.DEFAULT_ADMIN_HASH)
         session.add(admin)
         session.commit()
+        # Only ever on a fresh database, and it means an account exists whose
+        # password came from the environment.
+        log.warning("Created the default admin account %r", config.DEFAULT_ADMIN_NAME,
+                    extra={"username": config.DEFAULT_ADMIN_NAME})
 
 
 class UserDataDeletionResult:
@@ -49,6 +57,8 @@ def remove_user_data_older_than(td: timedelta, dry_run: bool):
 
         if dry_run:
             session.rollback()
+            log.info("Retention dry run: would delete %d GPS and %d log entries older than %s",
+                     gps_result.rowcount, log_result.rowcount, delete_timestamp.isoformat())
         else:
             session.commit()
 
