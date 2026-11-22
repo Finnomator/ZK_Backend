@@ -1,4 +1,5 @@
-from datetime import datetime
+from datetime import datetime, timezone
+
 from sqlmodel import SQLModel, Field, Relationship
 
 from app.models.hw_revision import HardwareRevisionDB, HardwareFirmwareLink
@@ -6,7 +7,7 @@ from app.models.hw_revision import HardwareRevisionDB, HardwareFirmwareLink
 
 class _FirmwareBase(SQLModel):
     version: str = Field(primary_key=True)
-    added: datetime = Field(default_factory=datetime.utcnow)
+    added: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 class FirmwareDB(_FirmwareBase, table=True):
     firmware: bytes
