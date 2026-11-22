@@ -15,6 +15,8 @@ router = APIRouter(prefix="/login", tags=["Login"])
 @router.get("/check-access")
 async def check_access(rfid_uid: str, timestamp: datetime, session: database.SessionDep, device: DeviceDB = Depends(auth_device)):
 
+    # What happens if the timestamp is invalid e.g. 1990 something?
+
     uid_is_whitelisted = session.get(RfidUidDB, rfid_uid) is not None
     has_valid_booking = True # TODO
 

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 
 from app.auth import auth_device
-from . import gps_tracking, log, rfids, other, firmware
+from . import gps_tracking, log, rfids, other, firmware, login
 
 router = APIRouter(prefix="/vehicle", tags=["Vehicle"], dependencies=[Depends(auth_device)])
 
@@ -10,3 +10,4 @@ router.include_router(log.router)
 router.include_router(gps_tracking.router)
 router.include_router(other.router)
 router.include_router(firmware.router)
+router.include_router(login.router)
