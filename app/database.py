@@ -8,7 +8,7 @@ from sqlmodel import SQLModel, Session
 
 from app.internal import config
 from app.internal.config import DATABASE_URL
-from app.models import AdminDB, GpsEntryDB, LogEntryDB
+from app.models import AdminDB, LogEntryDB
 
 log = logging.getLogger("app.db")
 
@@ -39,11 +39,9 @@ def insert_default_admin():
 
 
 class UserDataDeletionResult:
-    gps_entries_deleted: int
     log_entries_deleted: int
 
-    def __init__(self, gps_entries_deleted: int, log_entries_deleted: int):
-        self.gps_entries_deleted = gps_entries_deleted
+    def __init__(self, log_entries_deleted: int):
         self.log_entries_deleted = log_entries_deleted
 
 
@@ -52,17 +50,16 @@ def remove_user_data_older_than(td: timedelta, dry_run: bool):
     delete_timestamp = now - td
 
     with Session(engine) as session:
-        gps_result = session.exec(delete(GpsEntryDB).where(GpsEntryDB.timestamp < delete_timestamp))
         log_result = session.exec(delete(LogEntryDB).where(LogEntryDB.timestamp < delete_timestamp))
 
         if dry_run:
             session.rollback()
             log.info("Retention dry run: would delete %d GPS and %d log entries older than %s",
-                     gps_result.rowcount, log_result.rowcount, delete_timestamp.isoformat())
+                     log_result.rowcount, delete_timestamp.isoformat())
         else:
             session.commit()
 
-        return UserDataDeletionResult(gps_result.rowcount, log_result.rowcount)
+        return UserDataDeletionResult(log_result.rowcount)
 
 
 SessionDep = Annotated[Session, Depends(get_session)]

@@ -31,12 +31,9 @@ scheduler.start()
 def _delete_old_user_data():
     log.info("Deleting user data older than %s days", RETENTION.days)
     result = database.remove_user_data_older_than(RETENTION, False)
-    log.info("Retention sweep removed %d GPS entries and %d log entries",
-             result.gps_entries_deleted, result.log_entries_deleted,
-             extra={"gps_entries_deleted": result.gps_entries_deleted,
-                    "log_entries_deleted": result.log_entries_deleted,
+    log.info("Retention sweep removed %d log entries",result.log_entries_deleted,
+             extra={"log_entries_deleted": result.log_entries_deleted,
                     "retention_days": RETENTION.days})
-
 
 def start_background_user_data_cleanup_task():
     scheduler.add_job(_delete_old_user_data, "interval", days=1, id="delete_user_data")
